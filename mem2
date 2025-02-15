@@ -1,12 +1,17 @@
+wait(5)
+
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
-local leaderName = "pandaboiis58"
+local leaderName  = "pandaboiis58"
 
 local PLACE_ID_TARGET = 4310463616
 local JOB_ID_TARGET   = "58ae3c9c-5687-4ee1-9d40-b71f78492a34"
+
+-- Place ID cần kiểm tra đặc biệt
+local PLACE_ID_CHECK = 14400549310
 
 local Parties = ReplicatedStorage:FindFirstChild("Parties")
 if not Parties then
@@ -14,12 +19,14 @@ if not Parties then
     return
 end
 
--- Kiểm tra LocalPlayer đã trong party chưa
-local function isLocalPlayerInParty()
+-- Hàm kiểm tra LocalPlayer VÀ leader đang ở cùng 1 party
+local function isLocalPlayerWithLeaderInParty()
     for _, party in ipairs(Parties:GetChildren()) do
         local membersFolder = party:FindFirstChild("Members")
         if membersFolder and membersFolder:IsA("Folder") then
-            if membersFolder:FindFirstChild(LocalPlayer.Name) then
+            local localFound  = membersFolder:FindFirstChild(LocalPlayer.Name)
+            local leaderFound = membersFolder:FindFirstChild(leaderName)
+            if localFound and leaderFound then
                 return true
             end
         end
@@ -27,40 +34,46 @@ local function isLocalPlayerInParty()
     return false
 end
 
+-- Script này chỉ dành cho thành viên, không phải leader
+if LocalPlayer.Name == leaderName then
+    warn("Script này dành cho thành viên, bạn đang là leader.")
+    return
+end
+
 while true do
     task.wait(5)
 
-    -- Nếu chưa có trong party thì auto accept invite từ leader
-    if not isLocalPlayerInParty() then
-        local leaderPlayer = Players:FindFirstChild(leaderName)
-        if leaderPlayer then
-            local args = {
-                [1] = leaderPlayer
-            }
-            ReplicatedStorage:WaitForChild("Shared")
-                :WaitForChild("Party")
-                :WaitForChild("AcceptedInvite")
-                :FireServer(unpack(args))
-        end
-
-        -- Sau khi accept (hoặc không thấy leader), kiểm tra placeId & jobId
-        if game.PlaceId ~= PLACE_ID_TARGET then
-            -- Chưa ở place mục tiêu => Teleport tới
+    local inPartyWithLeader = isLocalPlayerWithLeaderInParty()
+    
+    -- Nếu KHÔNG ở cùng party với leader
+    if not inPartyWithLeader then
+        -- Trường hợp đặc biệt: nếu đang ở place 14400549310 mà không có leader => Teleport về place/job target
+        if game.PlaceId == PLACE_ID_CHECK then
             TeleportService:Teleport(PLACE_ID_TARGET, LocalPlayer)
+            task.wait(2) -- chờ 1-2s cho chắc chắn
+            TeleportService:TeleportToPlaceInstance(PLACE_ID_TARGET, JOB_ID_TARGET, LocalPlayer)
         else
-            -- Đang ở place 4310463616
-            if game.JobId == JOB_ID_TARGET then
-                -- Đã ở đúng jobId => dừng lại để chờ được mời vào party
-                print("Đã ở place 4310463616 và jobId chỉ định. Chờ được mời...")
-                break
-            else
-                -- Ở 4310463616 nhưng chưa đúng job => Teleport đến job đích
+            -- Tự động chấp nhận lời mời từ leader (nếu leader đang online)
+            local leaderPlayer = Players:FindFirstChild(leaderName)
+            if leaderPlayer then
+                ReplicatedStorage:WaitForChild("Shared")
+                    :WaitForChild("Party")
+                    :WaitForChild("AcceptedInvite")
+                    :FireServer(leaderPlayer)
+            end
+
+            -- Tiếp tục Teleport sang place/job target nếu chưa ở đó
+            if game.PlaceId ~= PLACE_ID_TARGET then
+                TeleportService:Teleport(PLACE_ID_TARGET, LocalPlayer)
+            elseif game.JobId ~= JOB_ID_TARGET then
                 TeleportService:TeleportToPlaceInstance(PLACE_ID_TARGET, JOB_ID_TARGET, LocalPlayer)
+            else
+                print("Đã ở place/job target nhưng vẫn chưa có leader, chờ được mời.")
             end
         end
 
     else
-        -- Đã ở trong party, không cần làm gì
-        print("Bạn đã ở trong party.")
+        -- Đã ở cùng party với leader
+        print("Bạn đã cùng party với leader, không cần Teleport.")
     end
 end
