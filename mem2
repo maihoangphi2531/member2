@@ -8,7 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 local leaderName  = "Hoazfe"
 
 local PLACE_ID_TARGET = 4310463616
-local JOB_ID_TARGET   = "0605d320-7188-4ec4-b342-0bd04fb58805"
+local JOB_ID_TARGET   = "b15ac2e2-5491-4f75-a038-81677f5501fd"
 
 -- Place ID cần kiểm tra đặc biệt
 local PLACE_ID_CHECK = 14400549310
