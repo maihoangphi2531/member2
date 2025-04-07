@@ -5,13 +5,11 @@ local TeleportService = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
-local leaderName  = "Hoazfe"
+local leaderNames = { "Hoazfe", "Laynaop1" }
 
 local PLACE_ID_TARGET = 4310463616
 local JOB_ID_TARGET   = "a5719129-6e62-4668-98de-6428c54a36a0"
-
--- Place ID cần kiểm tra đặc biệt
-local PLACE_ID_CHECK = 14400549310
+local PLACE_ID_CHECK  = 14400549310
 
 local Parties = ReplicatedStorage:FindFirstChild("Parties")
 if not Parties then
@@ -19,13 +17,18 @@ if not Parties then
     return
 end
 
--- Hàm kiểm tra LocalPlayer VÀ leader đang ở cùng 1 party
 local function isLocalPlayerWithLeaderInParty()
     for _, party in ipairs(Parties:GetChildren()) do
         local membersFolder = party:FindFirstChild("Members")
         if membersFolder and membersFolder:IsA("Folder") then
-            local localFound  = membersFolder:FindFirstChild(LocalPlayer.Name)
-            local leaderFound = membersFolder:FindFirstChild(leaderName)
+            local localFound = membersFolder:FindFirstChild(LocalPlayer.Name)
+            local leaderFound = false
+            for _, name in ipairs(leaderNames) do
+                if membersFolder:FindFirstChild(name) then
+                    leaderFound = true
+                    break
+                end
+            end
             if localFound and leaderFound then
                 return true
             end
@@ -34,10 +37,11 @@ local function isLocalPlayerWithLeaderInParty()
     return false
 end
 
--- Script này chỉ dành cho thành viên, không phải leader
-if LocalPlayer.Name == leaderName then
-    warn("Script này dành cho thành viên, bạn đang là leader.")
-    return
+for _, name in ipairs(leaderNames) do
+    if LocalPlayer.Name == name then
+        warn("Script này dành cho thành viên, bạn đang là leader.")
+        return
+    end
 end
 
 while true do
@@ -45,16 +49,21 @@ while true do
 
     local inPartyWithLeader = isLocalPlayerWithLeaderInParty()
     
-    -- Nếu KHÔNG ở cùng party với leader
     if not inPartyWithLeader then
-        -- Trường hợp đặc biệt: nếu đang ở place 14400549310 mà không có leader => Teleport về place/job target
         if game.PlaceId == PLACE_ID_CHECK then
             TeleportService:Teleport(PLACE_ID_TARGET, LocalPlayer)
-            task.wait(2) -- chờ 1-2s cho chắc chắn
+            task.wait(2)
             TeleportService:TeleportToPlaceInstance(PLACE_ID_TARGET, JOB_ID_TARGET, LocalPlayer)
         else
-            -- Tự động chấp nhận lời mời từ leader (nếu leader đang online)
-            local leaderPlayer = Players:FindFirstChild(leaderName)
+            local leaderPlayer = nil
+            for _, name in ipairs(leaderNames) do
+                local found = Players:FindFirstChild(name)
+                if found then
+                    leaderPlayer = found
+                    break
+                end
+            end
+
             if leaderPlayer then
                 ReplicatedStorage:WaitForChild("Shared")
                     :WaitForChild("Party")
@@ -62,7 +71,6 @@ while true do
                     :FireServer(leaderPlayer)
             end
 
-            -- Tiếp tục Teleport sang place/job target nếu chưa ở đó
             if game.PlaceId ~= PLACE_ID_TARGET then
                 TeleportService:Teleport(PLACE_ID_TARGET, LocalPlayer)
             elseif game.JobId ~= JOB_ID_TARGET then
@@ -71,9 +79,7 @@ while true do
                 print("Đã ở place/job target nhưng vẫn chưa có leader, chờ được mời.")
             end
         end
-
     else
-        -- Đã ở cùng party với leader
         print("Bạn đã cùng party với leader, không cần Teleport.")
     end
 end
